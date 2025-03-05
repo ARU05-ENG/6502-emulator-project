@@ -1,0 +1,241 @@
+The 6502 is used in the Nintendo Entertainment System (NES) and the Sega Genesis (and many other systems) for example, but also in the Commodore 64.It has only two registers, the accumulator and the program counter. The result of arithmetic and logical operations is stored by the accumulator and  to keep track of the current location in the program is done by the program counter. It can also address 64 kilobytes of memory, which is also used to address the ROM, RAM, and I/O devices. 
+The main features of 6502 are as follows:
+# It is an 8-bit processor
+# Can address 16 bits of memory
+# Has 56 instructions
+
+Due the limitations, the 6502 instruction set allows for multiple addressing options to reduce the number of processor cycles and speed up the program. The 6502 has two addressing modes, immediate and indirect. The immediate mode is used when the instruction is followed by a value that is used as an address. The indirect mode is used when the instruction is followed by a value that is used as an address, but the value is not used directly as an address, but instead, the address of the value is used.
+
+CREATING MEMORY
+
+Commodore 64 ,Atari 2600 and Nintendo Entertainment System have different memory models.They all are based on the same three main memory regions with a Zero Page and Stack regions and a General-purpose region. The Zero Page region is used to store variables and constants, and the Stack region is used to store the return addresses of subroutines.
+Region
+
+
+Description
+
+Zero page
+$0000 - $00FF-Region
+
+The first page of memory, which is faster to access than other pages. Instructions can specify addresses within the zero page with a single byte as opposed to two, so instructions that use the zero page instead of any other page require one less CPU cycle to execute.
+
+$0100 - $01FF
+
+Stack
+$0100 - $01FF-Region
+Last-in first-out data structure. Grows backward from $01FF to $0100. Used by some transfer, stack, and subroutine instructions.
+
+
+
+General-purpose
+$0200 - $FFFF-Region
+Memory that can be used for whatever purpose is needed. Devices that use the 6502 processor may choose to reserve sub-regions for other purposes, such as memory-mapped I/O.
+
+"""Emulation of the MOT-6502 memory."""
+
+
+class Memory:
+    """Memory bank for MOT-6502 systems."""
+
+    def __init__(self, size: int = 65536) -> None:
+        """Initialize the memory.
+
+        :param size: The size of the memory
+        :return: None
+        """
+        if 0x0200 < (size - 1) > 0xFFFF:
+            raise ValueError("Memory size is not valid")
+        self.size = size
+        self.memory = [0] * self.size
+        print(len(self.memory))
+
+    def __getitem__(self, address: int) -> int:
+        """Get the value at the specified address.
+
+        :param address: The address to read from
+        :return: The value at the specified address
+        """
+        if 0x0000 < address > self.size:
+            raise ValueError("Memory address is not valid")
+        return self.memory[address]
+
+    def __setitem__(self, address: int, value: int) -> int:
+        """Set the value at the specified address.
+
+        :param address: The address to write to
+        :param value: The value to write to the address
+        :return: None
+        """
+        if 0x0000 < address > self.size:
+            raise ValueError("Memory address is not valid")
+        if value.bit_length() > 8:
+            raise ValueError("Value too large")
+        self.memory[address] = value
+        return self.memory[address]
+By default, the  Memory class creates an array of bytes with a size of 65536.This is the maximum size of the 6502, but if desired it can be reduced to a smaller size. The memory can be accessed using the [] operator as magic methods __getitem__ and __setitem__ are implemented. When memory is created the size is validated to at least two pages and a maximum size of 65536 bytes, and an exception is raised if the size is not valid. The address is also validated when accessing memory to make sure we stay within boundaries. And finally, the __setitem__ method also verifies that only 8-bit values are written.
+The class Memory currently presents all available memory as RAM and in later version support for both protected ROM and I/O devices needs to be added.
+
+None of the memory is initialized to zero as this is part of the Post-Reset cycle and done by code present in the ROM at the vector address.
+
+PROCESSOR
+
+As we know  6502 is an 8-bit processor, so we need to create a class that will represent the processor. The class will have the following attributes:
+Accumulator-8 bits
+Used to perform calculations on data. Instructions can operate directly on the accumulator instead of spending CPU cycles to access memory
+X register (X)-8 bits
+Used as an index in some addressing modes
+Y register (Y)-8 bits
+Used as an index in some addressing modes
+Program Counter (PC)-16 bits
+Points to the address of the next instruction to be executed
+Stack Pointer (SP)-8 bits
+Stores the stack index into which the next stack element will be inserted. The address of this position is $0100 + SP. SP is initially set to $FD
+Status (SR)-8 bits
+Each bit represents a status flag. Flags indicate the state of the CPU or information about the result of the previous instruction. See the table below for a description of each flag
+
+The Status Register is an 8-bit register that contains the following flags:
+7(bit)
+
+N(Symbol)
+
+Negative
+
+Compare: Set if the register’s value is less than the input value
+
+Otherwise: Set if the result was negative, i.e. bit 7 of the result was set
+
+6(bit)
+
+
+V(Symbol)
+
+Overflow
+
+Arithmetic: Set if a signed overflow occurred during addition or subtraction, i.e. the sign of the result differs from the sign of both the input and the accumulator
+
+BIT: Set to bit 6 of the input
+
+5(bit)
+
+
+-
+
+Unused
+
+Always set
+
+4(bit)
+
+
+B(Symbol)
+
+Break
+
+Set if an interrupt request has been triggered by a BRK instruction
+
+3(bit)
+
+
+D(Symbol)
+
+Decimal
+
+Decimal mode: mathematical instructions will treat the inputs and outputs as decimal numbers. E.g. $09 + $01 = $10
+
+2(bit)
+
+
+I
+
+Interrupt Disable
+
+Disables interrupts while set
+
+1(bit)
+
+
+Z
+
+Zero
+
+Compare: Set if the register’s value is equal to the input value
+
+BIT: Set if the result of logically ANDing the accumulator with the input results in 0
+
+Otherwise: Set if the result was zero
+
+0(bit)
+
+
+C
+
+Carry
+
+Carry/Borrow flag used in math and rotate operations
+
+Arithmetic: Set if an unsigned overflow occurred during addition or subtraction, i.e. the result is less than the initial value
+
+Compare: Set if register’s value is greater than or equal to the input value
+
+Shifting: Set to the value of the eliminated bit of the input, i.e. bit 7 when shifting left, or bit 0 when shifting right
+The Processor class implements the attributes and two methods for initializing and resetting the processor. To reduce code complexity we also create the memory when the processor is created. The specification of the processor doesn’t specify the state of the processor at the start of the program, but it does specify the state after a reset.
+
+WORKING WITH WORDS
+Besides reading and writing bytes, the 6502 can also read and write words that are two bytes long. This is useful for reading and writing to memory locations that are not byte aligned. In processor design, two ways are different on how to read and write words and are called little and big-endian. The 6502 is a little-endian processor, so we need to make sure to use the little-endian layout when reading and writing to memory. Most processors are little-endian, but we need to make sure that the emulator is working with the same endianness.
+Endianness is the way that the bytes in a word are ordered when stored in memory. A big-endian word is stored as the most significant byte first, and a little-endian word is stored as the least significant byte first. If we visualize a word as a series of bits as seen in the diagram below, the most significant bit is on the left and the least significant bit is on the right. This is also how they are stored in memory and matches how they are stored in the processor.
+High byte
+
+
+
+Bits
+
+15 14 13 12 11 10 9 8
+
+
+Low byte
+
+Bits
+
+7 6 5 4 3 2 1 0
+
+Python has via the sys module away to expose the endianness of a processor. The sys.byteorder variable will return little or big depending on the endianness of the machine. With this information, we can create a function that will return the correct endianness of the word. The endianness will determine on which memory address we need to apply a bitshift operation to split the word into two bytes or add two bytes together.
+
+For reading a word on a little-endian machine we only have to read the low byte at the initial address and then read the high byte at the next address and combine them into a word by shifting the high byte to the left by 8 bits. For big-endian processors, we need to read the high byte first and then the low byte and combine them into a word by shifting the high byte to the left by 8 bits. For writing a word we can mostly reuse how we handled the reading of a word. The only difference is to shift the high byte to the right by 8 bits and make sure it is only 8 bits long.
+
+FETCHING OPCODES
+We now can implement the fetching of instructions or more precisely the opcode which is the numeric value of the instruction and also any arguments that the instruction might need. The processor has a register for the program counter which is used to keep track of the current address in memory. The opcode is then read from memory at the current address and the program counter is incremented by one. The same goes for the arguments which can be both a byte or a word.
+
+We have to implement a function to fetch a byte or word from memory. The function will take the current address from the program_counter register and return the byte or word at that address. Here we can reuse the read_byte() and read_word() functions from the previous section and only increase the program_counter.
+NOP - No Operation.
+
+The NOP instruction causes no changes to the processor other than the normal
+incrementing of the program counter to the next instruction.
+
+Processor Status after use:
+
++------+-------------------+--------------+
+| Flag | Description       | State        |
++======+===================+==============+
+|  C   | Carry Flag        | Not affected |
++------+-------------------+--------------+
+|  Z   | Zero Flag         | Not affected |
++------+-------------------+--------------+
+|  I   | Interrupt Disable | Not affected |
++------+-------------------+--------------+
+|  D   | Decimal Mode Flag | Not affected |
++------+-------------------+--------------+
+|  B   | Break Command     | Not affected |
++------+-------------------+--------------+
+|  V   | Overflow Flag     | Not affected |
++------+-------------------+--------------+
+|  N   | Negative Flag     | Not affected |
++------+-------------------+--------------+
++-----------------+--------+-------+--------+
+| Addressing Mode | Opcode | Bytes | Cycles |
++=================+========+=======+========+
+| Implied         |  0xEA  |   1   |    2   |
++-----------------+--------+-------+--------+
+"""
+
+
+
