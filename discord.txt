@@ -1,0 +1,45 @@
+To create a bot using python
+Step 1: We are going to create .env file to store the renewal key for our bot we copied above, .env file will protect our credentials when we will host our code somewhere. First, create a .env named file in your project folder and then insert the following code.
+
+Step 2: Importing modules
+
+Create a new python file for main bot code and name it as you want and import necessary modules.
+
+discord: Library provided by discord for using feature-rich discord API.
+os: We are using environment variables os module is used for importing those.
+random: Used for performing various random operations on data.
+dotenv: importing .env file into main python file.
+Step 3: Initializing Variables
+Using load_dotenv() function to import environment variables. Creating discord client to send a request to discord API and last we are getting and initializing our environment variable token.
+Step 4: Initializing our Bot 
+Here we are using on_ready() event provided by discord API once our API client has initialized this event will trigger performing the given operation. Here we are printing the name of our bot. 
+
+Step 5: Setting up bot responses
+
+We are setting appropriate bot responses to user messages. Discord API event on_message which takes an argument as the message is used for this purpose, message argument contains details about the message, author of the message, on which channel the message has been sent .etc
+First extract information about the message such as username, channel, and content of the message. 
+The next line plays an important role if the message is sent by the bot itself then don’t respond to it if this condition is not written then the bot will infinitely respond to itself.
+We are going to activate our bot on the channel we create in our server called random, you can also activate the bot in other channels. Writing multiple if-else statements will do work but you can also implement a chatbot using machine learning. Here we implemented a few if-else statements to respond to basic messages such as hi, hello, and bye and implemented a basic statement to tell a joke. You can always add more functionality and make your bot more interactable.
+
+Step 6: Running bot
+
+We created the API client above which provides a function called to run this function takes the argument auth token as an argument and runs the bot by calling on_ready event.
+
+
+
+
+
+RESPOND TO USER MESSAGES IN THE DISCORD SERVER USING THE GEMINI APP
+Within the activated virtual environment, install necessary Python libraries:
+install discord.py requests dotenv
+Then Create a .env file in your project directory to store sensitive information:
+Use the dotenv library to securely load these variables:
+Moving forward, Import required libraries and set up the bot instance:
+ Then create an event listener for incoming messages:
+Within the listener, extract the message content and utilize the Gemini API to generate appropriate responses:
+Optionally, implement commands for enhanced bot functionality using discord.ext.commands:
+Incorporate robust error handling and logging mechanisms:
+Use try-except blocks to catch exceptions and provide meaningful error messages to users or log them for debugging.
+Consider libraries like logging for structured logging to help diagnose issues.
+In your terminal, run the bot script (e.g., python bot.py):
+
