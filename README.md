@@ -1,1 +1,1 @@
-# 6502-emulator-project
+# 6502-emulator-project and discord
